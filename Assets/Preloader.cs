@@ -1,17 +1,18 @@
 ﻿using UnityEngine;
+using UnityEngine.SceneManagement;
 using System.Collections;
+using System.IO;
 using AssetBundles;
 
 public class Preloader : MonoBehaviour {
 
-	const string variantSceneAssetBundle = "variants/variant-scene";
+	const string sceneAssetBundle = "scene-bundle";
 	const string variantSceneName = "resolutions";
-	private string[] activeVariants;
+	private string activeVariant;
 	private bool bundlesLoaded;				// used to remove the loading buttons
 
 	void Awake ()
 	{
-		activeVariants = new string[1];
 		bundlesLoaded = false;
 	}
 
@@ -25,7 +26,7 @@ public class Preloader : MonoBehaviour {
 			GUILayout.BeginVertical ();
 			if (GUILayout.Button ("Load SD"))
 			{
-				activeVariants[0] = "sd";
+				activeVariant = "sd";
 				bundlesLoaded = true;
 				StartCoroutine (BeginExample ());
 				BeginExample ();
@@ -33,7 +34,7 @@ public class Preloader : MonoBehaviour {
 			GUILayout.Space (5);
 			if (GUILayout.Button ("Load HD"))
 			{
-				activeVariants[0] = "hd";
+				activeVariant = "hd";
 				bundlesLoaded = true;
 				StartCoroutine (BeginExample ());
 				Debug.Log ("Loading HD");
@@ -43,16 +44,62 @@ public class Preloader : MonoBehaviour {
 		}
 	}
 
+	private AssetBundle lastAssetBundle = null;
+	IEnumerator LoadAssetBundle(string bundleName, string variant, string bundleGroup)
+	{
+		lastAssetBundle = null;
+
+		if (variant != null)
+		{
+			bundleName = bundleName + "." +  activeVariant;
+		}
+
+		var path = Application.streamingAssetsPath;
+		if (path.Contains("://"))
+		{
+			path += "/" + Utility.GetPlatformName () + "/";
+			if (bundleGroup != null)
+			{
+				path +=  bundleGroup + "/";
+			}
+			path += bundleName;
+
+			Debug.Log ("Loading asset bundle from URL: " + path);
+			WWW www = WWW.LoadFromCacheOrDownload (path, 1);
+			yield return www;
+			if (www.error != null)
+			{
+				Debug.LogError(www.error);
+			}
+
+			lastAssetBundle = www.assetBundle;
+		}
+		else
+		{
+			path = Path.Combine(path, Utility.GetPlatformName ());
+			if (bundleGroup != null)
+			{
+				path = Path.Combine (path, Path.Combine (bundleGroup, bundleName));
+			}
+			else
+			{
+				path = Path.Combine (path, bundleName);
+			}
+
+			var request = AssetBundle.LoadFromFileAsync (path);
+			yield return request;
+			lastAssetBundle = request.assetBundle;
+		}
+			
+	}
 	// Use this for initialization
 	IEnumerator BeginExample ()
 	{
-		yield return StartCoroutine(Initialize() );
-
-		// Set active variants.
-		AssetBundleManager.ActiveVariants = activeVariants;
-
-		// Load variant level which depends on variants.
-		yield return StartCoroutine(InitializeLevelAsync (variantSceneName, true) );
+		yield return LoadAssetBundle ("myassets", activeVariant, "variants");
+		yield return lastAssetBundle.LoadAllAssetsAsync ();
+		yield return LoadAssetBundle ("scene-bundle", null, null);
+		yield return lastAssetBundle.LoadAllAssetsAsync ();
+		yield return SceneManager.LoadSceneAsync ("resolutions", LoadSceneMode.Additive);
 	}
 
 	// Initialize the downloading url and AssetBundleManifest object.
@@ -81,21 +128,5 @@ public class Preloader : MonoBehaviour {
 		if (request != null)
 			yield return StartCoroutine(request);
 	}
-
-	protected IEnumerator InitializeLevelAsync (string levelName, bool isAdditive)
-	{
-		// This is simply to get the elapsed time for this phase of AssetLoading.
-		float startTime = Time.realtimeSinceStartup;
-
-		// Load level from assetBundle.
-		AssetBundleLoadOperation request = AssetBundleManager.LoadLevelAsync(variantSceneAssetBundle, levelName, isAdditive);
-		if (request == null)
-			yield break;
-
-		yield return StartCoroutine(request);
-
-		// Calculate and display the elapsed time.
-		float elapsedTime = Time.realtimeSinceStartup - startTime;
-		Debug.Log("Finished loading scene " + levelName + " in " + elapsedTime + " seconds" );
-	}
+		
 }

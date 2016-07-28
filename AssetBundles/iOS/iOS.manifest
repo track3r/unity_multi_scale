@@ -8,6 +8,6 @@ AssetBundleManifest:
       Name: variants/myassets.sd
       Dependencies: {}
     Info_2:
-      Name: variants/variant-scene
+      Name: scene-bundle
       Dependencies:
         Dependency_0: variants/myassets.hd
