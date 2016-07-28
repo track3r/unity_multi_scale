@@ -1,0 +1,13 @@
+ManifestFileVersion: 0
+AssetBundleManifest:
+  AssetBundleInfos:
+    Info_0:
+      Name: variants/myassets.hd
+      Dependencies: {}
+    Info_1:
+      Name: variants/myassets.sd
+      Dependencies: {}
+    Info_2:
+      Name: variants/variant-scene
+      Dependencies:
+        Dependency_0: variants/myassets.hd
