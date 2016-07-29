@@ -18,6 +18,8 @@ public class Preloader : MonoBehaviour {
 
 	void OnGUI ()
 	{
+		//sample logic to determine neede asset bundle variant
+		//use device capabilities instead
 		if (!bundlesLoaded)
 		{
 			GUILayout.Space (20);
@@ -44,8 +46,11 @@ public class Preloader : MonoBehaviour {
 		}
 	}
 
+
+	//https://docs.unity3d.com/ScriptReference/AssetBundle.html
 	private AssetBundle lastAssetBundle = null;
-	IEnumerator LoadAssetBundle(string bundleName, string variant, string bundleGroup)
+
+	IEnumerator LoadStreamingAssetBundle(string bundleName, string variant, string bundleGroup)
 	{
 		lastAssetBundle = null;
 
@@ -55,6 +60,7 @@ public class Preloader : MonoBehaviour {
 		}
 
 		var path = Application.streamingAssetsPath;
+		//https://docs.unity3d.com/ScriptReference/Application-streamingAssetsPath.html
 		if (path.Contains("://"))
 		{
 			path += "/" + Utility.GetPlatformName () + "/";
@@ -92,41 +98,18 @@ public class Preloader : MonoBehaviour {
 		}
 			
 	}
-	// Use this for initialization
+
 	IEnumerator BeginExample ()
 	{
-		yield return LoadAssetBundle ("myassets", activeVariant, "variants");
+		//first load selected bundle variant
+		yield return LoadStreamingAssetBundle ("myassets", activeVariant, "variants");
 		yield return lastAssetBundle.LoadAllAssetsAsync ();
-		yield return LoadAssetBundle ("scene-bundle", null, null);
+
+		//load content, dependent on variable assest, works only if dependent content loaded is loaded dynamically from another bundle
+		//content can be scene or prefab
+		yield return LoadStreamingAssetBundle ("scene-bundle", null, null);
 		yield return lastAssetBundle.LoadAllAssetsAsync ();
+
 		yield return SceneManager.LoadSceneAsync ("resolutions", LoadSceneMode.Additive);
-	}
-
-	// Initialize the downloading url and AssetBundleManifest object.
-	protected IEnumerator Initialize()
-	{
-		// Don't destroy this gameObject as we depend on it to run the loading script.
-		DontDestroyOnLoad(gameObject);
-
-		// With this code, when in-editor or using a development builds: Always use the AssetBundle Server
-		// (This is very dependent on the production workflow of the project. 
-		// 	Another approach would be to make this configurable in the standalone player.)
-		#if DEVELOPMENT_BUILD || UNITY_EDITOR
-		//AssetBundleManager.SetDevelopmentAssetBundleServer ();
-		Debug.Log("dataPath: " + Application.dataPath + " streamingPath: " + Application.streamingAssetsPath);
-		AssetBundleManager.SetSourceAssetBundleDirectory(Utility.GetPlatformName() + "/");
-		#else
-		// Use the following code if AssetBundles are embedded in the project for example via StreamingAssets folder etc:
-		AssetBundleManager.SetSourceAssetBundleURL(Application.dataPath + "/");
-		// Or customize the URL based on your deployment or configuration
-		//AssetBundleManager.SetSourceAssetBundleURL("http://www.MyWebsite/MyAssetBundles");
-		#endif
-
-		// Initialize AssetBundleManifest which loads the AssetBundleManifest object.
-		var request = AssetBundleManager.Initialize();
-
-		if (request != null)
-			yield return StartCoroutine(request);
-	}
-		
+	}		
 }
